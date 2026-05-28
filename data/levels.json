@@ -1,0 +1,106 @@
+{
+  "levels": [
+    {
+      "id": 1,
+      "name": "第一重·风劫",
+      "tribulation_type": "wind",
+      "targets": { "atk": 20, "def": 20, "spd": 20 },
+      "step_time": 12,
+      "is_boss": false,
+      "rare_bonus": 0,
+      "narrative": "罡风入体，初次凝练道基。"
+    },
+    {
+      "id": 2,
+      "name": "第二重·火劫",
+      "tribulation_type": "fire",
+      "targets": { "atk": 28, "def": 25, "spd": 22 },
+      "step_time": 12,
+      "is_boss": false,
+      "rare_bonus": 5,
+      "narrative": "心火焚脉，诱惑与陷阱相伴而生。"
+    },
+    {
+      "id": 3,
+      "name": "第三重·雷劫",
+      "tribulation_type": "thunder",
+      "targets": { "atk": 36, "def": 32, "spd": 28 },
+      "step_time": 10,
+      "is_boss": false,
+      "rare_bonus": 10,
+      "narrative": "雷霆万钧，天道震怒。"
+    },
+    {
+      "id": 4,
+      "name": "第四重·冰劫",
+      "tribulation_type": "ice",
+      "targets": { "atk": 42, "def": 38, "spd": 40 },
+      "step_time": 10,
+      "is_boss": false,
+      "rare_bonus": 15,
+      "narrative": "寒气凝滞，时间即是敌人。"
+    },
+    {
+      "id": 5,
+      "name": "第五重·五行劫",
+      "tribulation_type": "five_elements",
+      "targets": { "atk": 60, "def": 25, "spd": 50 },
+      "step_time": 8,
+      "is_boss": true,
+      "rare_bonus": 20,
+      "narrative": "五行之力同时降临，师尊最后的神识为你护法。"
+    },
+    {
+      "id": 6,
+      "name": "第六重·阴阳劫",
+      "tribulation_type": "yin_yang",
+      "targets": { "atk": 55, "def": 52, "spd": 48 },
+      "step_time": 8,
+      "is_boss": false,
+      "rare_bonus": 25,
+      "narrative": "阴阳二气流转，需精准掌控，不偏不倚。"
+    },
+    {
+      "id": 7,
+      "name": "第七重·时空劫",
+      "tribulation_type": "spacetime",
+      "targets": { "atk": 65, "def": 58, "spd": 60 },
+      "step_time": 7,
+      "is_boss": false,
+      "rare_bonus": 30,
+      "narrative": "时空扭曲，天劫加速，但道心愈坚。"
+    },
+    {
+      "id": 8,
+      "name": "第八重·寂灭劫",
+      "tribulation_type": "void",
+      "targets": { "atk": 72, "def": 68, "spd": 62 },
+      "step_time": 7,
+      "is_boss": false,
+      "rare_bonus": 35,
+      "narrative": "万物归寂，心魔四伏，在黑暗中寻找光明。"
+    },
+    {
+      "id": 9,
+      "name": "第九重·轮回劫",
+      "tribulation_type": "samsara",
+      "targets": { "atk": 85, "def": 75, "spd": 72 },
+      "step_time": 6,
+      "is_boss": false,
+      "rare_bonus": 40,
+      "narrative": "九转轮回，这是最后的天劫——也是最难的。"
+    },
+    {
+      "id": 10,
+      "name": "心魔劫",
+      "tribulation_type": "inner_demon",
+      "targets": { "atk": 100, "def": 55, "spd": 85 },
+      "step_time": 6,
+      "is_boss": true,
+      "rare_bonus": 45,
+      "god_card_chance": 3,
+      "curse_card_chance": 15,
+      "narrative": "最后的敌人，是你自己。"
+    }
+  ]
+}

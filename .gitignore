@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Game saves
+saves/
+
+# Launch logs
+launch_log.txt
+启动日志.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/

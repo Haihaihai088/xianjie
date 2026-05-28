@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天劫 · 战斗界面</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Noto+Sans+SC:wght@300;400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: #1a1a1a;
+    font-family: 'Noto Serif SC', 'Noto Sans SC', 'SimSun', serif;
+    overflow: hidden;
+  }
+
+  .game-screen {
+    width: 800px; height: 600px;
+    position: relative; overflow: hidden;
+    background: url('battle_bg.png') center/cover no-repeat;
+    border-radius: 8px;
+    box-shadow: 0 0 60px rgba(180,200,190,0.15);
+  }
+
+  /* ---- Ambient texture ---- */
+  .game-screen::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 80%, rgba(200,215,205,0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(220,235,225,0.15) 0%, transparent 50%);
+    pointer-events: none; z-index: 1;
+  }
+
+  /* ========== MIST LAYERS ========== */
+  .mist { position: absolute; left: -15%; right: -15%; height: 90px; border-radius: 50%; pointer-events: none; z-index: 2; }
+  .mist-1 { bottom: 8%;  background: radial-gradient(ellipse, rgba(235,242,238,0.55) 0%, transparent 70%); animation: mistA 14s ease-in-out infinite; }
+  .mist-2 { bottom: 18%; background: radial-gradient(ellipse, rgba(225,238,230,0.4) 0%, transparent 65%); animation: mistB 18s ease-in-out infinite reverse; }
+  .mist-3 { bottom: 28%; background: radial-gradient(ellipse, rgba(240,245,240,0.45) 0%, transparent 70%); animation: mistA 16s ease-in-out infinite 4s; }
+  @keyframes mistA { 0%,100% { transform: translateX(0) scale(1); } 50% { transform: translateX(3%) scale(1.04); } }
+  @keyframes mistB { 0%,100% { transform: translateX(1%) scale(1.02); } 50% { transform: translateX(-2%) scale(0.97); } }
+
+  /* ========== SILK RIBBON (decorative flowing silk) ========== */
+  .silk-ribbon {
+    position: absolute; pointer-events: none; z-index: 3;
+    width: 280px; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(180,200,185,0.35) 40%, rgba(201,190,160,0.45) 60%, transparent);
+    border-radius: 1px;
+    animation: silkFlow 12s ease-in-out infinite;
+  }
+  .silk-ribbon:nth-child(2) { top: 22%; left: 55%; animation-delay: -4s; width: 320px; }
+  .silk-ribbon:nth-child(3) { top: 68%; left: 10%; animation-delay: -8s; width: 240px; }
+  @keyframes silkFlow {
+    0%,100% { transform: translateX(0) translateY(0) rotate(-3deg); opacity: 0.4; }
+    25%  { transform: translateX(40px) translateY(-12px) rotate(2deg); opacity: 0.7; }
+    50%  { transform: translateX(20px) translateY(-6px) rotate(-1deg); opacity: 0.5; }
+    75%  { transform: translateX(-20px) translateY(8px) rotate(4deg); opacity: 0.3; }
+  }
+
+  /* ========== ENERGY VORTEX ========== */
+  .vortex {
+    position: absolute; top: 48%; left: 52%; transform: translate(-50%, -50%);
+    width: 300px; height: 300px; pointer-events: none; z-index: 0;
+    background: radial-gradient(ellipse,
+      rgba(245,240,232,0.10) 0%, rgba(232,215,240,0.06) 20%,
+      rgba(213,232,240,0.04) 40%, transparent 65%);
+    border-radius: 50%;
+    animation: vortexSpin 20s linear infinite, vortexPulse 6s ease-in-out infinite;
+  }
+  @keyframes vortexSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+  @keyframes vortexPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* ========== PARTICLES ========== */
+  .particles { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+  .particle {
+    position: absolute; border-radius: 50%;
+    background: rgba(200,210,195,0.5);
+    animation: floatUp var(--dur) ease-in-out infinite;
+    animation-delay: var(--delay); opacity: 0;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(0) scale(1); opacity: 0; }
+    20%  { opacity: 0.6; }
+    80%  { opacity: 0.1; }
+    100% { transform: translateY(-200px) scale(0.15); opacity: 0; }
+  }
+
+  /* ========== UI LAYER ========== */
+  .ui-layer { position: absolute; inset: 0; z-index: 10; }
+
+  /* ---- Top bar ---- */
+  .top-bar { display: flex; align-items: center; gap: 16px; padding: 18px 24px; }
+  .level-name { font-size: 18px; font-weight: 400; letter-spacing: 0.15em; color: #5C7B6E; text-shadow: 0 0 12px rgba(150,180,165,0.2); }
+  .timer { font-size: 18px; font-weight: 600; color: #7BA3B8; transition: color 0.3s; }
+  .timer.warning { color: #C9A96E; animation: timerPulse 0.5s ease-in-out infinite; }
+  .timer.danger  { color: #C97070; animation: timerPulse 0.3s ease-in-out infinite; }
+  @keyframes timerPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  /* ---- Stat bars ---- */
+  .stats-panel { position: absolute; left: 18px; top: 88px; display: flex; flex-direction: column; gap: 20px; }
+  .stat-row { display: flex; align-items: center; gap: 8px; }
+  .stat-label { width: 30px; font-size: 14px; font-weight: 400; letter-spacing: 0.12em; color: #6B8B7A; text-align: right; }
+  .stat-bar-outer {
+    width: 200px; height: 11px;
+    background: rgba(210,218,210,0.45);
+    border-radius: 6px; overflow: hidden; position: relative;
+    border: 1px solid rgba(185,200,190,0.35);
+  }
+  .stat-bar-fill { height: 100%; border-radius: 6px; transition: width 0.55s cubic-bezier(0.25, 0, 0.15, 1); position: relative; }
+  .stat-bar-fill::after {
+    content: ''; position: absolute; right: 0; top: 0; bottom: 0;
+    width: 20px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5));
+    border-radius: 0 6px 6px 0; opacity: 0; transition: opacity 0.3s;
+  }
+  .stat-bar-fill.atk { background: linear-gradient(90deg, #C9A0A0, #D4B0A0); }
+  .stat-bar-fill.def { background: linear-gradient(90deg, #B8B090, #C9C0A0); }
+  .stat-bar-fill.spd { background: linear-gradient(90deg, #A0B8A8, #A8C8B8); }
+  .stat-bar-fill.overflow { background: linear-gradient(90deg, #C9C0A0, #D4CEB0); }
+
+  /* Stat bar pulse glow when filling */
+  .stat-bar-fill.pulse-glow::after { opacity: 1; animation: barShine 1.5s ease-out forwards; }
+  @keyframes barShine {
+    0%   { opacity: 0; transform: translateX(0); }
+    30%  { opacity: 1; transform: translateX(-10px); }
+    100% { opacity: 0; transform: translateX(-20px); }
+  }
+
+  .stat-target { position: absolute; top: -2px; bottom: -2px; width: 2px; background: rgba(140,160,148,0.5); border-radius: 1px; z-index: 2; }
+  .stat-val { font-size: 12px; color: #7B9B8A; min-width: 52px; font-weight: 400; transition: color 0.4s; }
+
+  /* ---- Target met glow ---- */
+  .stat-bar-outer.target-met { border-color: rgba(201,169,110,0.4); box-shadow: 0 0 10px rgba(201,169,110,0.15); transition: all 0.6s; }
+
+  /* ========== CARD AREA ========== */
+  .cards-area {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; gap: 50px; margin-top: 10px;
+  }
+
+  .card {
+    width: 170px; height: 230px;
+    border-radius: 14px; position: relative;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 0, 0.15, 1);
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(6px);
+    display: flex; flex-direction: column; align-items: center;
+    border: 2px solid rgba(180,195,185,0.4);
+    user-select: none;
+  }
+
+  /* ---- Card ENTRANCE animation ---- */
+  .card.card-enter {
+    animation: cardSlideIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .card.card-enter:nth-child(2) { animation-delay: 0.1s; }
+  @keyframes cardSlideIn {
+    0%   { transform: translateY(60px) scale(0.7); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  /* ---- Rarity borders ---- */
+  .card.rarity-common {
+    border-color: rgba(195,200,195,0.55);
+    box-shadow: 0 2px 16px rgba(180,190,180,0.12);
+  }
+  .card.rarity-rare {
+    border-color: rgba(130,165,178,0.55);
+    box-shadow: 0 2px 22px rgba(130,165,178,0.15);
+  }
+  .card.rarity-epic {
+    border-color: rgba(201,169,110,0.6);
+    box-shadow: 0 2px 26px rgba(201,169,110,0.18);
+  }
+
+  /* ---- Corner jade beads ---- */
+  .corner-bead {
+    position: absolute; width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(180,195,180,0.35); transition: all 0.4s;
+    z-index: 5;
+  }
+  .corner-bead.tl { top: 7px; left: 7px; }
+  .corner-bead.tr { top: 7px; right: 7px; }
+  .corner-bead.bl { bottom: 7px; left: 7px; }
+  .corner-bead.br { bottom: 7px; right: 7px; }
+
+  /* ---- Card inner ---- */
+  .card-icon {
+    margin-top: 20px; font-size: 36px; opacity: 0.5;
+    transition: all 0.4s ease;
+  }
+  .card-name {
+    margin-top: 6px; font-size: 18px; font-weight: 600;
+    letter-spacing: 0.18em; color: #4B6B5C;
+    text-shadow: 0 0 8px rgba(150,175,160,0.15);
+  }
+  .card-stats { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .card-stat { font-size: 15px; font-weight: 400; letter-spacing: 0.1em; transition: transform 0.3s; }
+  .card-stat.positive { color: #5B9B7A; }
+  .card-stat.negative { color: #C97070; }
+  .card-rarity-label {
+    position: absolute; bottom: 12px;
+    font-size: 12px; letter-spacing: 0.2em; font-weight: 300;
+  }
+  .rarity-common .card-rarity-label { color: #A0ADA0; }
+  .rarity-rare   .card-rarity-label { color: #7BA3B8; }
+  .rarity-epic   .card-rarity-label { color: #C9A96E; }
+
+  /* ---- Card hover ---- */
+  .card:hover { transform: translateY(-6px); transition: all 0.28s cubic-bezier(0.25, 0, 0.15, 1); }
+  .card.rarity-common:hover { border-color: rgba(200,210,200,0.8); box-shadow: 0 8px 28px rgba(180,195,180,0.22); }
+  .card.rarity-rare:hover   { border-color: rgba(130,165,178,0.85); box-shadow: 0 8px 32px rgba(130,165,178,0.28); }
+  .card.rarity-epic:hover   { border-color: rgba(201,169,110,0.9); box-shadow: 0 8px 36px rgba(201,169,110,0.32); }
+  .card:hover .corner-bead { background: rgba(201,169,110,0.6); box-shadow: 0 0 6px rgba(201,169,110,0.2); }
+  .card:hover .card-icon { opacity: 0.7; transform: scale(1.1); }
+
+  /* ---- Card PICKED animation ---- */
+  .card.picked {
+    animation: cardPick 0.55s cubic-bezier(0.25, 0, 0.15, 1) forwards;
+    pointer-events: none;
+  }
+  @keyframes cardPick {
+    0%   { transform: scale(1); filter: brightness(1); }
+    25%  { transform: scale(1.06); filter: brightness(1.3); }
+    100% { transform: scale(1.12); filter: brightness(1.6); opacity: 0; }
+  }
+  .card.dimmed { opacity: 0.35; pointer-events: none; transition: all 0.35s ease; filter: brightness(0.7); }
+
+  /* Card selection BURST ring */
+  .card-burst {
+    position: absolute; top: 50%; left: 50%;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(201,169,110,0.5);
+    transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 15;
+    animation: burstRing 0.7s ease-out forwards;
+  }
+  @keyframes burstRing {
+    0%   { width: 20px; height: 20px; opacity: 0.9; }
+    100% { width: 200px; height: 280px; opacity: 0; border-width: 0.2px; }
+  }
+
+  /* ========== FLY NUMBERS ========== */
+  .fly-num {
+    position: absolute; font-size: 20px; font-weight: 600;
+    pointer-events: none; z-index: 20;
+    animation: flyUp 1s ease-out forwards;
+  }
+  @keyframes flyUp {
+    0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+    15%  { transform: translateY(-5px) scale(1.2); opacity: 1; }
+    100% { transform: translateY(-65px) scale(0.9); opacity: 0; }
+  }
+
+  .fly-crit {
+    position: absolute; font-size: 32px; font-weight: 700;
+    pointer-events: none; z-index: 21;
+    animation: critPop 1.2s ease-out forwards;
+  }
+  @keyframes critPop {
+    0%   { transform: translateY(0) scale(0.3) rotate(-10deg); opacity: 0; }
+    20%  { transform: translateY(-10px) scale(1.4) rotate(3deg); opacity: 1; }
+    100% { transform: translateY(-80px) scale(0.8) rotate(5deg); opacity: 0; }
+  }
+
+  /* ========== COMBO ========== */
+  .combo-display {
+    position: absolute; bottom: 72px; left: 50%; transform: translateX(-50%);
+    font-size: 16px; font-weight: 400; letter-spacing: 0.2em;
+    color: #C9A96E; text-shadow: 0 0 16px rgba(201,169,110,0.3);
+    opacity: 0; transition: all 0.5s ease;
+  }
+  .combo-display.active { opacity: 1; animation: comboGlow 2s ease-in-out infinite; }
+  @keyframes comboGlow {
+    0%,100% { text-shadow: 0 0 12px rgba(201,169,110,0.25); }
+    50%     { text-shadow: 0 0 24px rgba(201,169,110,0.5); }
+  }
+
+  /* ========== SCORE & STEP ========== */
+  .score-display { position: absolute; bottom: 20px; left: 22px; font-size: 14px; letter-spacing: 0.1em; color: #8AA89A; }
+  .step-indicator { position: absolute; bottom: 20px; right: 22px; font-size: 12px; letter-spacing: 0.1em; color: rgba(140,160,150,0.5); }
+
+  /* ========== SCREEN SHAKE ========== */
+  .game-screen.shake { animation: screenShake 0.35s ease-out; }
+  @keyframes screenShake {
+    0%{transform:translateX(0)}15%{transform:translateX(-5px)}30%{transform:translateX(5px)}
+    45%{transform:translateX(-4px)}60%{transform:translateX(4px)}75%{transform:translateX(-1px)}100%{transform:translateX(0)}
+  }
+
+  /* ========== LEVEL CLEAR ========== */
+  .clear-flash {
+    position: absolute; inset: 0; z-index: 15;
+    background: radial-gradient(circle, rgba(255,252,240,0.35) 0%, transparent 70%);
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  }
+  .clear-flash.show { opacity: 1; transition: opacity 0s; }
+
+  .rating-popup {
+    position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 72px; font-weight: 600;
+    z-index: 20; pointer-events: none;
+    animation: ratingPopIn 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+  @keyframes ratingPopIn {
+    0%   { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 0; }
+    60%  { transform: translate(-50%, -50%) scale(1.15) rotate(5deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  /* ========== CELEBRATION PARTICLES ========== */
+  .celeb-particle {
+    position: absolute; z-index: 19; pointer-events: none; border-radius: 50%;
+    animation: celebBurst var(--cdur) ease-out forwards;
+    animation-delay: var(--cdelay);
+  }
+  @keyframes celebBurst {
+    0%   { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--cx), var(--cy)) scale(0); opacity: 0; }
+  }
+
+  /* ========== NEXT BUTTON ========== */
+  .next-btn {
+    position: absolute; bottom: 38px; left: 50%; transform: translateX(-50%);
+    padding: 10px 32px; font-family: 'Noto Serif SC', serif; font-size: 15px;
+    letter-spacing: 0.2em; color: #5C7B6E;
+    background: rgba(255,255,255,0.4); border: 1.5px solid rgba(201,169,110,0.5);
+    border-radius: 20px; cursor: pointer; z-index: 20;
+    opacity: 0; pointer-events: none; transition: all 0.4s ease;
+  }
+  .next-btn.visible { opacity: 1; pointer-events: auto; animation: btnFadeIn 0.5s ease-out forwards; }
+  @keyframes btnFadeIn {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  .next-btn:hover { background: rgba(255,255,255,0.6); border-color: rgba(201,169,110,0.75); box-shadow: 0 4px 20px rgba(201,169,110,0.2); }
+
+  .hint { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); font-size: 12px; letter-spacing: 0.1em; color: rgba(140,160,150,0.4); z-index: 8; }
+
+</style>
+</head>
+<body>
+
+<div class="game-screen" id="gameScreen">
+
+  <!-- Mist overlay -->
+  <div class="mist mist-1"></div>
+  <div class="mist mist-2"></div>
+
+  <!-- Particles -->
+  <div class="particles" id="particles"></div>
+
+  <!-- Flash -->
+  <div class="clear-flash" id="clearFlash"></div>
+
+  <!-- UI Layer -->
+  <div class="ui-layer">
+    <div class="top-bar">
+      <span class="level-name" id="levelName">第一重 · 风劫</span>
+      <span class="timer" id="timer">⏱ 12秒</span>
+    </div>
+
+    <div class="stats-panel">
+      <div class="stat-row">
+        <span class="stat-label">灵力</span>
+        <div class="stat-bar-outer" id="barOuterAtk">
+          <div class="stat-bar-fill atk" id="barAtk" style="width: 0%"></div>
+          <div class="stat-target" id="tgtAtk" style="left: 0%"></div>
+        </div>
+        <span class="stat-val" id="valAtk">0 / 20</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">根骨</span>
+        <div class="stat-bar-outer" id="barOuterDef">
+          <div class="stat-bar-fill def" id="barDef" style="width: 0%"></div>
+          <div class="stat-target" id="tgtDef" style="left: 0%"></div>
+        </div>
+        <span class="stat-val" id="valDef">0 / 20</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">身法</span>
+        <div class="stat-bar-outer" id="barOuterSpd">
+          <div class="stat-bar-fill spd" id="barSpd" style="width: 0%"></div>
+          <div class="stat-target" id="tgtSpd" style="left: 0%"></div>
+        </div>
+        <span class="stat-val" id="valSpd">0 / 20</span>
+      </div>
+    </div>
+
+    <div class="cards-area" id="cardsArea"></div>
+    <div class="combo-display" id="comboDisplay"></div>
+    <div class="score-display" id="scoreDisplay">渡劫评分: 0</div>
+    <div class="step-indicator" id="stepIndicator">第 1 / 5 步</div>
+    <div class="hint">点击卡牌选择  ·  同一风格连击加分</div>
+    <button class="next-btn" id="nextBtn" onclick="resetLevel()">进入下一关 →</button>
+  </div>
+</div>
+
+<script>
+// ==================== GAME STATE ====================
+const TARGETS = { atk: 20, def: 20, spd: 20 };
+const MAX_STEPS = 5;
+let stats = { atk: 0, def: 0, spd: 0 };
+let score = 0, combo = 0, lastStyle = null, step = 0;
+let levelComplete = false, timerSec = 12, currentLevel = 1;
+
+const LEVELS = [
+  { name: '第一重 · 风劫',  atk: 20, def: 20, spd: 20 },
+  { name: '第二重 · 火劫',  atk: 28, def: 25, spd: 22 },
+  { name: '第三重 · 雷劫',  atk: 36, def: 32, spd: 28 },
+];
+
+const STYLE_ICONS = { attack: '⚔️', defense: '🛡️', speed: '💨', balance: '☯️', curse: '💀' };
+const CARD_NAMES_POOL = {
+  attack:  ['九霄','焚天','龙象','破虚','裂空','雷霆','混元','斩仙'],
+  defense: ['金刚','太乙','玄武','不灭','磐石','天河','镇岳','不朽'],
+  speed:   ['凌波','逍遥','幻影','电光','掠影','追月','惊鸿','无痕'],
+  balance: ['太极','万象','归元','两仪','乾坤','星辰','混沌','天人'],
+  curse:   ['心魔','反噬','走火','入魔','噬魂','枯荣','崩坏','伪道'],
+};
+const NOUNS = ['诀','谱','经','功','法','术','剑','鼎','镜','幡','珠','符','印','丹','芝','髓'];
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+
+function generateCard(fs){
+  const rr=Math.random();
+  let rarity, sr, sumR;
+  if(rr<0.6){rarity='common';sr=[-8,15];sumR=[5,15]}
+  else if(rr<0.9){rarity='rare';sr=[-15,25];sumR=[-5,20]}
+  else{rarity='epic';sr=[-20,40];sumR=[-10,30]}
+  let a,d,s,t=0;
+  do{a=ri(sr[0],sr[1]);d=ri(sr[0],sr[1]);s=ri(sr[0],sr[1]);t++;}
+  while(t<100&&(a+d+s<sumR[0]||a+d+s>sumR[1]));
+  let style;
+  if(a<0&&d<0&&s<0)style='curse';
+  else{const mx=Math.max(a,d,s),mn=Math.min(a,d,s);if(mx-mn<=4)style='balance';else if(a>=d&&a>=s)style='attack';else if(d>=a&&d>=s)style='defense';else style='speed';}
+  if(fs)style=fs;
+  return{name:pick(CARD_NAMES_POOL[style])+' · '+pick(NOUNS),rarity,style,atk:a,def:d,spd:s};
+}
+
+// ==================== RENDER ====================
+let currentCardA, currentCardB;
+
+function renderCards(cA, cB){
+  const area=document.getElementById('cardsArea');
+  area.innerHTML='';
+  [cA,cB].forEach((card,idx)=>{
+    const el=document.createElement('div');
+    el.className=`card rarity-${card.rarity} card-enter`;
+    el.setAttribute('data-idx',idx);
+    el.onclick=()=>pickCard(idx,el);
+    // corner beads
+    ['tl','tr','bl','br'].forEach(pos=>{
+      const bead=document.createElement('div');
+      bead.className=`corner-bead ${pos}`;
+      el.appendChild(bead);
+    });
+    // icon
+    const icon=document.createElement('div');
+    icon.className='card-icon';
+    icon.textContent=STYLE_ICONS[card.style];
+    el.appendChild(icon);
+    // name
+    const nm=document.createElement('div');
+    nm.className='card-name'; nm.textContent=card.name;
+    el.appendChild(nm);
+    // stats
+    const st=document.createElement('div'); st.className='card-stats';
+    ['atk','def','spd'].forEach(stat=>{
+      const v=card[stat];
+      const d=document.createElement('div');
+      d.className='card-stat '+(v>=0?'positive':'negative');
+      const labels={atk:'灵力',def:'根骨',spd:'身法'};
+      d.textContent=`${labels[stat]} ${v>=0?'+':''}${v}`;
+      st.appendChild(d);
+    });
+    el.appendChild(st);
+    // rarity label
+    const rl=document.createElement('div');
+    rl.className='card-rarity-label';
+    rl.textContent={common:'[ 普通 ]',rare:'[ 稀有 ]',epic:'[ 史诗 ]'}[card.rarity];
+    el.appendChild(rl);
+    area.appendChild(el);
+  });
+}
+
+function updateStats(){
+  const scale=1.5;
+  ['atk','def','spd'].forEach(stat=>{
+    const val=stats[stat], tgt=TARGETS[stat];
+    const pct=Math.min(val/(tgt*scale)*100,100);
+    const tgtPct=tgt/(tgt*scale)*100;
+    const cap=stat.charAt(0).toUpperCase()+stat.slice(1);
+    const bar=document.getElementById('bar'+cap);
+    const tgtEl=document.getElementById('tgt'+cap);
+    const valEl=document.getElementById('val'+cap);
+    const outer=document.getElementById('barOuter'+cap);
+
+    const oldW=parseFloat(bar.style.width)||0;
+    bar.style.width=pct+'%';
+    tgtEl.style.left=tgtPct+'%';
+    valEl.textContent=val+' / '+tgt;
+
+    // Pulse glow on significant increase
+    if(pct-oldW>5){
+      bar.classList.add('pulse-glow');
+      setTimeout(()=>bar.classList.remove('pulse-glow'),1500);
+    }
+
+    if(val>=tgt*1.3) bar.classList.add('overflow'); else bar.classList.remove('overflow');
+    if(val>=tgt){
+      bar.style.filter='brightness(1.2)';
+      valEl.style.color='#C9A96E';
+      outer.classList.add('target-met');
+    } else {
+      bar.style.filter=(val/tgt<0.5)?'brightness(0.6)':'brightness(0.85)';
+      valEl.style.color='#7B9B8A';
+      outer.classList.remove('target-met');
+    }
+  });
+}
+
+function updateCombo(){
+  const el=document.getElementById('comboDisplay');
+  if(combo>=4){el.textContent='道心专一 · 天人合一 ×'+combo;el.className='combo-display active';}
+  else if(combo===3){el.textContent='道心专一 · 万法归宗';el.className='combo-display active';}
+  else if(combo===2){el.textContent='道心专一 · 道心初凝';el.className='combo-display active';}
+  else{el.className='combo-display';}
+}
+
+function updateTimerDisplay(){
+  const el=document.getElementById('timer');
+  el.textContent='⏱ '+timerSec+'秒';
+  el.classList.remove('warning','danger');
+  if(timerSec<=2)el.classList.add('danger');else if(timerSec<=4)el.classList.add('warning');
+}
+
+// ==================== GAMEPLAY ====================
+function spawnCards(){
+  if(levelComplete)return;
+  currentCardA=generateCard();
+  currentCardB=generateCard();
+  if(step===MAX_STEPS-1) currentCardB=generateCard('curse');
+  renderCards(currentCardA,currentCardB);
+  document.querySelector('.hint').style.display='block';
+}
+
+function pickCard(idx,el){
+  if(levelComplete)return;
+  const card=idx===0?currentCardA:currentCardB;
+  step++;
+  document.getElementById('stepIndicator').textContent='第 '+Math.min(step,MAX_STEPS)+' / '+MAX_STEPS+' 步';
+
+  stats.atk+=card.atk; stats.def+=card.def; stats.spd+=card.spd;
+
+  if(card.style===lastStyle&&card.style!=='curse')combo++;else combo=(card.style==='curse')?0:1;
+  lastStyle=(card.style==='curse')?null:card.style;
+
+  let cb=0; if(combo>=4)cb=6; else if(combo===3)cb=4; else if(combo===2)cb=2;
+  stats.atk+=cb; stats.def+=cb; stats.spd+=cb;
+
+  let critChance=0;
+  if(card.rarity==='epic')critChance=0.15; else if(card.rarity==='rare')critChance=0.05;
+  const isCrit=Math.random()<critChance;
+  if(isCrit){stats.atk+=Math.floor(card.atk*0.5);stats.def+=Math.floor(card.def*0.5);stats.spd+=Math.floor(card.spd*0.5);}
+
+  score+=100+timerSec*50+(isCrit?150:0)+combo*200;
+
+  // ---- ANIMATION: mark cards ----
+  el.classList.add('picked');
+  const other=document.querySelectorAll('.card')[1-idx];
+  if(other)other.classList.add('dimmed');
+
+  // Burst ring on picked card
+  const burst=document.createElement('div');
+  burst.className='card-burst';
+  el.appendChild(burst);
+  burst.addEventListener('animationend',()=>burst.remove());
+
+  // Flying numbers
+  const labels={atk:'灵力',def:'根骨',spd:'身法'};
+  const colors={atk:'#5B9B7A',def:'#B8B090',spd:'#A0B8A8'};
+  ['atk','def','spd'].forEach(s=>{
+    spawnFlyNum(el,labels[s]+' '+(card[s]>=0?'+':'')+card[s],card[s]>=0?colors[s]:'#C97070',false);
+  });
+
+  if(isCrit){
+    spawnFlyNum(el,'暴击!','#C9A96E',true);
+    document.getElementById('gameScreen').classList.add('shake');
+    setTimeout(()=>document.getElementById('gameScreen').classList.remove('shake'),350);
+  }
+  if(combo>=3){
+    spawnFlyNum(el,combo>=4?'天人合一!':'万法归宗!','#9BA8C0',false);
+  }
+
+  updateStats(); updateCombo();
+  document.getElementById('scoreDisplay').textContent='渡劫评分: '+score;
+  document.querySelector('.hint').style.display='none';
+
+  if(stats.atk>=TARGETS.atk&&stats.def>=TARGETS.def&&stats.spd>=TARGETS.spd){
+    completeLevel();
+  }else if(step>=MAX_STEPS){
+    setTimeout(()=>{
+      document.getElementById('clearFlash').classList.add('show');
+      setTimeout(()=>document.getElementById('clearFlash').classList.remove('show'),150);
+      resetGameState(); spawnCards();
+    },600);
+  }else{
+    setTimeout(spawnCards,600);
+  }
+}
+
+function spawnFlyNum(el,text,color,isCrit){
+  const sr=document.getElementById('gameScreen').getBoundingClientRect();
+  const er=el.getBoundingClientRect();
+  const fn=document.createElement('div');
+  fn.className=isCrit?'fly-crit':'fly-num';
+  fn.textContent=text; fn.style.color=color;
+  fn.style.left=(er.left+er.width/2-sr.left+(Math.random()-0.5)*50)+'px';
+  fn.style.top=(er.top+er.height*0.25-sr.top)+'px';
+  document.getElementById('gameScreen').appendChild(fn);
+  fn.addEventListener('animationend',()=>fn.remove());
+}
+
+function completeLevel(){
+  levelComplete=true; clearInterval(timerInterval);
+  document.getElementById('clearFlash').classList.add('show');
+  setTimeout(()=>document.getElementById('clearFlash').classList.remove('show'),300);
+
+  // Celebration particles
+  for(let i=0;i<30;i++){
+    const cp=document.createElement('div');
+    cp.className='celeb-particle';
+    const size=2+Math.random()*5;
+    cp.style.cssText=`
+      width:${size}px; height:${size}px;
+      background:rgba(${200+Math.random()*55},${160+Math.random()*40},${100+Math.random()*30},${0.5+Math.random()*0.4});
+      left:${35+Math.random()*30}%; top:${35+Math.random()*30}%;
+      --cx:${(Math.random()-0.5)*300}px; --cy:${(Math.random()-0.5)*250}px;
+      --cdur:${0.6+Math.random()*0.8}s; --cdelay:${Math.random()*0.4}s;
+    `;
+    document.getElementById('gameScreen').appendChild(cp);
+    cp.addEventListener('animationend',()=>cp.remove());
+  }
+
+  document.getElementById('nextBtn').classList.add('visible');
+  document.getElementById('comboDisplay').textContent='渡劫成功！';
+  document.getElementById('comboDisplay').className='combo-display active';
+
+  let rating, color;
+  if(score>=3000){rating='S';color='#C9A96E';}
+  else if(score>=2000){rating='A';color='#6B9B7A';}
+  else if(score>=1000){rating='B';color='#8BA0B8';}
+  else{rating='C';color='#A0A0A0';}
+
+  const re=document.createElement('div');
+  re.className='rating-popup';
+  re.textContent=rating; re.style.color=color;
+  re.style.textShadow=`0 0 50px ${color}44`;
+  document.getElementById('gameScreen').appendChild(re);
+}
+
+function resetGameState(){
+  stats={atk:0,def:0,spd:0}; score=0; combo=0; lastStyle=null; step=0;
+  updateStats(); updateCombo();
+  document.getElementById('scoreDisplay').textContent='渡劫评分: 0';
+  document.getElementById('stepIndicator').textContent='第 1 / '+MAX_STEPS+' 步';
+}
+
+function resetLevel(){
+  document.getElementById('nextBtn').classList.remove('visible');
+  document.getElementById('comboDisplay').className='combo-display';
+  document.querySelectorAll('.rating-popup').forEach(e=>e.remove());
+  document.querySelectorAll('.celeb-particle').forEach(e=>e.remove());
+
+  currentLevel=(currentLevel%LEVELS.length)+1;
+  const lv=LEVELS[currentLevel-1];
+  TARGETS.atk=lv.atk;TARGETS.def=lv.def;TARGETS.spd=lv.spd;
+  timerSec=12;
+  document.getElementById('levelName').textContent=lv.name;
+  document.getElementById('tgtAtk').style.left=(lv.atk/(lv.atk*1.5)*100)+'%';
+  document.getElementById('tgtDef').style.left=(lv.def/(lv.def*1.5)*100)+'%';
+  document.getElementById('tgtSpd').style.left=(lv.spd/(lv.spd*1.5)*100)+'%';
+
+  resetGameState(); levelComplete=false; updateTimerDisplay(); spawnCards(); startTimer();
+}
+
+let timerInterval;
+function startTimer(){
+  clearInterval(timerInterval);
+  timerSec=12; updateTimerDisplay();
+  timerInterval=setInterval(()=>{
+    if(levelComplete)return;
+    timerSec--; updateTimerDisplay();
+    if(timerSec<=0){clearInterval(timerInterval);if(!levelComplete){
+      document.getElementById('comboDisplay').textContent='时间耗尽...';
+      document.getElementById('comboDisplay').className='combo-display active';
+      setTimeout(resetLevel,1500);
+    }}
+  },1000);
+}
+
+// ==================== INIT ====================
+function initLevel(){
+  const lv=LEVELS[currentLevel-1];
+  TARGETS.atk=lv.atk;TARGETS.def=lv.def;TARGETS.spd=lv.spd;
+  timerSec=12;
+  document.getElementById('levelName').textContent=lv.name;
+  document.getElementById('tgtAtk').style.left=(lv.atk/(lv.atk*1.5)*100)+'%';
+  document.getElementById('tgtDef').style.left=(lv.def/(lv.def*1.5)*100)+'%';
+  document.getElementById('tgtSpd').style.left=(lv.spd/(lv.spd*1.5)*100)+'%';
+  updateTimerDisplay(); spawnCards(); startTimer();
+}
+
+// Particles
+const pc=document.getElementById('particles');
+for(let i=0;i<22;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  p.style.left=Math.random()*95+'%';
+  p.style.top=(50+Math.random()*50)+'%';
+  p.style.setProperty('--dur',(7+Math.random()*12)+'s');
+  p.style.setProperty('--delay',Math.random()*8+'s');
+  p.style.width=(1.5+Math.random()*3)+'px';
+  p.style.height=p.style.width;
+  pc.appendChild(p);
+}
+
+initLevel();
+
+</script>
+</body>
+</html>

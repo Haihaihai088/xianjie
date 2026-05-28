@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天劫 · Heavenly Tribulation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Noto+Sans+SC:wght@300;400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: #0d0d0d;
+    font-family: 'Noto Serif SC', 'Noto Sans SC', 'SimSun', serif;
+    overflow: hidden;
+  }
+
+  /* ========== GAME SCREEN ========== */
+  .game-screen {
+    width: 800px; height: 600px;
+    position: relative; overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 0 80px rgba(180,150,100,0.2);
+  }
+
+  /* ---- Background image with subtle sway (camera breathe) ---- */
+  .bg-image {
+    position: absolute; inset: -8px; /* slight overscan for sway */
+    background: url('menu_bg.png') center/cover no-repeat;
+    animation: bgSway 8s ease-in-out infinite;
+    z-index: 0;
+  }
+  @keyframes bgSway {
+    0%, 100% { transform: scale(1.01) translate(0, 0); }
+    25%  { transform: scale(1.015) translate(-2px, 1px); }
+    50%  { transform: scale(1.01) translate(1px, -1px); }
+    75%  { transform: scale(1.012) translate(-1px, 2px); }
+  }
+
+  /* ---- Dark ominous vignette ---- */
+  .game-screen::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(5,3,8,0.55) 100%);
+    pointer-events: none; z-index: 1;
+    animation: vignettePulse 6s ease-in-out infinite;
+  }
+  @keyframes vignettePulse {
+    0%, 100% { opacity: 0.85; }
+    50%      { opacity: 1; }
+  }
+
+  /* ========== DARK MIST (劫难雾气) ========== */
+  .mist-layer {
+    position: absolute; left: -10%; right: -10%; height: 100px;
+    border-radius: 50%; pointer-events: none; z-index: 2;
+  }
+  .mist-1 {
+    bottom: 20%;
+    background: radial-gradient(ellipse, rgba(40,30,25,0.35) 0%, transparent 70%);
+    animation: mistDrift 22s ease-in-out infinite;
+  }
+  .mist-2 {
+    bottom: 8%;
+    background: radial-gradient(ellipse, rgba(30,20,18,0.3) 0%, transparent 65%);
+    animation: mistDrift 26s ease-in-out infinite reverse;
+  }
+  @keyframes mistDrift {
+    0%, 100% { transform: translateX(0) scale(1); }
+    50% { transform: translateX(4%) scale(1.05); }
+  }
+
+  /* ========== ASH & EMBER PARTICLES (劫灰与火星) ========== */
+  .particles { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+
+  /* Black ash - large flakes drifting upward */
+  .ash {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, rgba(60,55,50,0.7) 0%, rgba(30,25,20,0.15) 70%, transparent 100%);
+    animation: ashFloat var(--dur) ease-in-out infinite;
+    animation-delay: var(--delay);
+    opacity: 0;
+  }
+  @keyframes ashFloat {
+    0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+    10%  { opacity: 0.6; }
+    30%  { opacity: 0.45; }
+    80%  { opacity: 0.1; }
+    100% { transform: translateY(-400px) translateX(var(--drift)) rotate(var(--spin)); opacity: 0; }
+  }
+
+  /* Ember - small glowing sparks */
+  .ember {
+    position: absolute; border-radius: 50%;
+    animation: emberFloat var(--dur) ease-in-out infinite;
+    animation-delay: var(--delay);
+    opacity: 0;
+  }
+  .ember::after {
+    content: ''; position: absolute;
+    inset: -60%;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(255,160,40,0.4) 0%,
+      rgba(200,80,20,0.12) 40%,
+      transparent 70%
+    );
+    animation: emberGlow var(--glow-dur) ease-in-out infinite;
+  }
+  @keyframes emberFloat {
+    0%   { transform: translateY(0) translateX(0); opacity: 0; }
+    12%  { opacity: 0.85; }
+    35%  { opacity: 0.55; }
+    75%  { opacity: 0.15; }
+    100% { transform: translateY(-320px) translateX(var(--drift)); opacity: 0; }
+  }
+  @keyframes emberGlow {
+    0%, 100% { transform: scale(0.8); opacity: 0.5; }
+    50%      { transform: scale(1.8); opacity: 1; }
+  }
+
+  /* ========== UI CONTENT ========== */
+  .ui-layer {
+    position: absolute; inset: 0; z-index: 10;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+
+  /* ---- Title area: placed in upper-center ---- */
+  .title-area {
+    position: absolute;
+    top: 15%;
+    left: 50%; transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .main-title {
+    font-size: 56px; font-weight: 300;
+    letter-spacing: 0.65em; text-indent: 0.65em;
+    color: rgba(255,240,210,0.9);
+    text-shadow:
+      0 0 40px rgba(200,160,80,0.4),
+      0 2px 4px rgba(0,0,0,0.5);
+    line-height: 1;
+  }
+
+  .sub-title {
+    font-size: 14px; font-weight: 300;
+    letter-spacing: 0.4em; text-indent: 0.4em;
+    color: rgba(220,200,160,0.7);
+    margin-top: 14px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+
+  /* ---- Divider ---- */
+  .divider-wrap { margin: 0 auto 12px; text-align: center; }
+  .divider {
+    display: inline-block;
+    width: 180px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(200,170,110,0.5) 20%, rgba(220,190,130,0.55) 50%, rgba(200,170,110,0.5) 80%, transparent);
+  }
+  .divider-dot {
+    width: 4px; height: 4px;
+    background: rgba(220,190,140,0.5);
+    border-radius: 50%; margin: 6px auto 0;
+    box-shadow: 0 0 10px rgba(220,180,120,0.35);
+  }
+
+  /* ---- Menu buttons ---- */
+  .menu-buttons {
+    display: flex; flex-direction: column; gap: 16px;
+    align-items: center;
+  }
+
+  .menu-btn {
+    position: relative;
+    width: 220px; padding: 13px 0;
+    text-align: center;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px; font-weight: 400;
+    letter-spacing: 0.28em; text-indent: 0.28em;
+    color: rgba(255,240,210,0.8);
+    background: rgba(20,15,10,0.35);
+    border: 1px solid rgba(200,170,120,0.35);
+    border-radius: 24px; cursor: pointer;
+    transition: all 0.45s cubic-bezier(0.25, 0, 0.15, 1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    z-index: 1;
+  }
+
+  /* Corner beads */
+  .menu-btn::before, .menu-btn::after {
+    content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(200,170,120,0.35);
+    transition: all 0.45s cubic-bezier(0.25, 0, 0.15, 1);
+  }
+  .menu-btn::before { left: 10px; }
+  .menu-btn::after  { right: 10px; }
+
+  /* ---- Button variants ---- */
+  .btn-primary {
+    border-color: rgba(220,180,110,0.5);
+    font-size: 19px; font-weight: 600;
+    letter-spacing: 0.32em; text-indent: 0.32em;
+    color: rgba(255,245,220,0.9);
+    background: rgba(30,22,12,0.4);
+  }
+  .btn-secondary {
+    border-color: rgba(160,180,195,0.45);
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: rgba(180,160,130,0.25);
+    color: rgba(200,180,150,0.65);
+    font-size: 16px; letter-spacing: 0.22em; text-indent: 0.22em;
+  }
+
+  /* ---- Hover ---- */
+  .menu-btn:hover {
+    transform: translateY(-2px);
+    color: rgba(255,248,225,1);
+    background: rgba(40,28,15,0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.3s cubic-bezier(0.25, 0, 0.15, 1);
+  }
+  .btn-primary:hover {
+    border-color: rgba(240,200,120,0.75);
+    box-shadow:
+      0 6px 28px rgba(180,140,60,0.25),
+      0 0 60px rgba(200,160,80,0.12),
+      inset 0 0 0 1px rgba(255,255,240,0.2);
+  }
+  .btn-secondary:hover {
+    border-color: rgba(160,190,210,0.7);
+    box-shadow:
+      0 6px 28px rgba(120,150,180,0.2),
+      0 0 60px rgba(140,170,200,0.1),
+      inset 0 0 0 1px rgba(240,248,255,0.2);
+  }
+  .btn-ghost:hover {
+    color: rgba(220,200,170,0.85);
+    border-color: rgba(200,180,150,0.5);
+    box-shadow: 0 4px 20px rgba(160,130,80,0.15);
+  }
+  .menu-btn:hover::before, .menu-btn:hover::after {
+    background: rgba(220,190,120,0.6);
+    box-shadow: 0 0 8px rgba(220,180,100,0.3);
+  }
+
+  /* ---- Footer ---- */
+  .footer {
+    position: absolute; bottom: 20px; left: 0; right: 0;
+    text-align: center; z-index: 10;
+    font-size: 12px; letter-spacing: 0.3em;
+    color: rgba(180,160,130,0.45);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  /* ---- Click ripple ---- */
+  .ripple {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(220,190,130,0.35);
+    animation: rippleOut 1s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes rippleOut {
+    0%   { width: 0; height: 0; opacity: 0.8; }
+    100% { width: 120px; height: 120px; opacity: 0; margin-left: -60px; margin-top: -60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="game-screen" id="gameScreen">
+
+  <!-- Background image with subtle sway -->
+  <div class="bg-image"></div>
+
+  <!-- Dark mist -->
+  <div class="mist-layer mist-1"></div>
+  <div class="mist-layer mist-2"></div>
+
+  <!-- Floating particles -->
+  <div class="particles" id="particles"></div>
+
+  <!-- UI -->
+  <div class="ui-layer">
+    <div class="menu-buttons">
+      <button class="menu-btn btn-primary" onclick="handleClick(this, '开始渡劫')">开 始 渡 劫</button>
+      <button class="menu-btn btn-secondary" onclick="handleClick(this, '选择关卡')">选 择 关 卡</button>
+      <button class="menu-btn btn-ghost" onclick="handleClick(this, '退出游戏')">退 出</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Dark ash particles (劫灰) - floating debris of calamity
+  const pc = document.getElementById('particles');
+
+  // Large black ash flakes
+  for (let i = 0; i < 35; i++) {
+    const ash = document.createElement('div');
+    ash.className = 'ash';
+    const size = 2 + Math.random() * 10; // varied sizes like real ash
+    ash.style.width = size + 'px';
+    ash.style.height = (size * (0.5 + Math.random() * 0.8)) + 'px'; // slightly irregular
+    ash.style.left = (Math.random() * 100) + '%';
+    ash.style.top = (30 + Math.random() * 70) + '%';
+    ash.style.setProperty('--dur', (10 + Math.random() * 18) + 's');
+    ash.style.setProperty('--delay', Math.random() * 12 + 's');
+    ash.style.setProperty('--drift', ((Math.random() - 0.5) * 120) + 'px');
+    ash.style.setProperty('--spin', ((Math.random() - 0.5) * 200) + 'deg');
+    ash.style.opacity = (0.2 + Math.random() * 0.35);
+    pc.appendChild(ash);
+  }
+
+  // Glowing embers (火星) - scattered warm sparks
+  for (let i = 0; i < 18; i++) {
+    const emb = document.createElement('div');
+    emb.className = 'ember';
+    const size = 1.5 + Math.random() * 4;
+    emb.style.width = size + 'px';
+    emb.style.height = size + 'px';
+    emb.style.left = (Math.random() * 95) + '%';
+    emb.style.top = (40 + Math.random() * 60) + '%';
+    emb.style.setProperty('--dur', (6 + Math.random() * 10) + 's');
+    emb.style.setProperty('--glow-dur', (1.5 + Math.random() * 2.5) + 's');
+    emb.style.setProperty('--delay', Math.random() * 8 + 's');
+    emb.style.setProperty('--drift', ((Math.random() - 0.5) * 80) + 'px');
+    // Amber/orange ember color
+    const r = 200 + Math.floor(Math.random() * 55);
+    const g = 60 + Math.floor(Math.random() * 40);
+    const b = 10 + Math.floor(Math.random() * 20);
+    emb.style.background = `radial-gradient(circle, rgba(${r},${g},${b},0.9) 0%, rgba(${r-40},${g-30},0,0.3) 50%, transparent 80%)`;
+    emb.style.boxShadow = `0 0 ${2+size}px rgba(${r},${g},${b},0.5)`;
+    pc.appendChild(emb);
+  }
+
+  function handleClick(btn, label) {
+    const ripple = document.createElement('div');
+    ripple.className = 'ripple';
+    ripple.style.left = '50%'; ripple.style.top = '50%';
+    btn.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove());
+    console.log('[天劫]', label);
+  }
+
+  // Keyboard
+  document.addEventListener('keydown', (e) => {
+    const btns = document.querySelectorAll('.menu-btn');
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const f = document.activeElement;
+      if (f && f.classList.contains('menu-btn')) f.click(); else btns[0].focus();
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const f = document.activeElement;
+      const idx = Array.from(btns).indexOf(f);
+      btns[idx < 0 ? 0 : (idx + 1) % btns.length].focus();
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const f = document.activeElement;
+      const idx = Array.from(btns).indexOf(f);
+      btns[idx < 0 ? 0 : (idx - 1 + btns.length) % btns.length].focus();
+    }
+  });
+  document.querySelectorAll('.menu-btn').forEach(b => b.tabIndex = 0);
+</script>
+
+</body>
+</html>
